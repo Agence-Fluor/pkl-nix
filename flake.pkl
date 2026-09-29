@@ -1,0 +1,27 @@
+#!/usr/bin/env -S pkl-nix-tools
+amends "Flake.pkl"
+
+import "Nix.pkl" as Nix
+
+description = "Pkl schemas and renderer for Nix flakes"
+
+inputs {
+  ["nixpkgs"] = new Nix.Input { url = "github:NixOS/nixpkgs/nixos-unstable" }
+}
+
+local systems = List("x86_64-linux", "aarch64-linux", "x86_64-darwin", "aarch64-darwin")
+
+devShells {
+  for (system in systems) {
+    [system] {
+      ["default"] = new Nix.Raw {
+        code =
+          """
+          inputs.nixpkgs.legacyPackages.\(system).mkShell {
+            packages = with inputs.nixpkgs.legacyPackages.\(system); [ pkl nix unzip ];
+          }
+          """
+      }
+    }
+  }
+}

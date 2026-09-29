@@ -1,0 +1,69 @@
+module nix.Flake
+
+import "Nix.pkl" as Nix
+
+description: String? = null
+inputs: Nix.Inputs = new {}
+nixConfig: Mapping<String, Nix.Value> = new {}
+
+/// Replace the entire outputs function when the structured fields are insufficient.
+outputsExpr: Nix.Expr? = null
+
+/// Standard flake outputs, indexed by system and then by name.
+packages: Nix.Packages = new {}
+devShells: Nix.DevShells = new {}
+apps: Nix.Apps = new {}
+checks: Nix.Checks = new {}
+formatter: Nix.Formatters = new {}
+
+overlays: Nix.Overlays = new {}
+nixosModules: Nix.NixosModules = new {}
+nixosConfigurations: Nix.NixosConfigurations = new {}
+legacyPackages: Mapping<String, Nix.Expr> = new {}
+templates: Nix.Templates = new {}
+bundlers: Mapping<String, Nix.Expr> = new {}
+hydraJobs: Mapping<String, Nix.Value> = new {}
+
+/// Older Nix flake names remain available for existing flakes.
+defaultPackage: Mapping<String, Nix.Expr> = new {}
+defaultApp: Mapping<String, Nix.Expr> = new {}
+devShell: Mapping<String, Nix.Expr> = new {}
+defaultBundler: Mapping<String, Nix.Expr> = new {}
+overlay: Nix.Expr? = null
+nixosModule: Nix.Expr? = null
+defaultTemplate: Nix.Expr? = null
+
+/// Additional top-level outputs, including arbitrary Nix expressions.
+custom: Mapping<String, Nix.Value> = new {}
+
+local function renderOutputs(): String =
+  Nix.renderAttrs(new Mapping<String, Nix.Value> {
+    when (!packages.isEmpty) { ["packages"] = new Nix.Raw { code = Nix.renderSystems(packages) } }
+    when (!devShells.isEmpty) { ["devShells"] = new Nix.Raw { code = Nix.renderSystems(devShells) } }
+    when (!apps.isEmpty) { ["apps"] = new Nix.Raw { code = Nix.renderSystems(apps) } }
+    when (!checks.isEmpty) { ["checks"] = new Nix.Raw { code = Nix.renderSystems(checks) } }
+    when (!formatter.isEmpty) { ["formatter"] = new Nix.Raw { code = Nix.renderExprs(formatter) } }
+    when (!overlays.isEmpty) { ["overlays"] = new Nix.Raw { code = Nix.renderExprs(overlays) } }
+    when (!nixosModules.isEmpty) { ["nixosModules"] = new Nix.Raw { code = Nix.renderExprs(nixosModules) } }
+    when (!nixosConfigurations.isEmpty) { ["nixosConfigurations"] = new Nix.Raw { code = Nix.renderExprs(nixosConfigurations) } }
+    when (!legacyPackages.isEmpty) { ["legacyPackages"] = new Nix.Raw { code = Nix.renderExprs(legacyPackages) } }
+    when (!templates.isEmpty) { ["templates"] = new Nix.Raw { code = Nix.renderExprs(templates) } }
+    when (!bundlers.isEmpty) { ["bundlers"] = new Nix.Raw { code = Nix.renderExprs(bundlers) } }
+    when (!hydraJobs.isEmpty) { ["hydraJobs"] = new Nix.Raw { code = Nix.renderAttrs(hydraJobs) } }
+    when (!defaultPackage.isEmpty) { ["defaultPackage"] = new Nix.Raw { code = Nix.renderExprs(defaultPackage) } }
+    when (!defaultApp.isEmpty) { ["defaultApp"] = new Nix.Raw { code = Nix.renderExprs(defaultApp) } }
+    when (!devShell.isEmpty) { ["devShell"] = new Nix.Raw { code = Nix.renderExprs(devShell) } }
+    when (!defaultBundler.isEmpty) { ["defaultBundler"] = new Nix.Raw { code = Nix.renderExprs(defaultBundler) } }
+    when (overlay != null) { ["overlay"] = overlay }
+    when (nixosModule != null) { ["nixosModule"] = nixosModule }
+    when (defaultTemplate != null) { ["defaultTemplate"] = defaultTemplate }
+    for (key, value in custom) { [key] = value }
+  })
+
+output {
+  text = "{\n" +
+    (if (description == null) "" else "  description = " + Nix.quote(description) + ";\n") +
+    (if (inputs.isEmpty) "" else "  inputs = " + Nix.renderInputs(inputs) + ";\n") +
+    (if (nixConfig.isEmpty) "" else "  nixConfig = " + Nix.renderAttrs(nixConfig) + ";\n") +
+    "  outputs = " + (if (outputsExpr == null) "{ self, ... } @ inputs: " + renderOutputs() else Nix.render(outputsExpr)) + ";\n}\n"
+}

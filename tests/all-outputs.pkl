@@ -1,0 +1,54 @@
+amends "../Flake.pkl"
+
+import "../Nix.pkl" as Nix
+
+description = "Escaped ${literal} and \"quotes\""
+nixConfig { ["bash-prompt"] = "pkl> " }
+
+inputs {
+  ["nixpkgs"] = new Nix.Input {
+    type = "github"
+    owner = "NixOS"
+    repo = "nixpkgs"
+    ref = "nixos-unstable"
+  }
+  ["tool"] = new Nix.Input {
+    url = "github:example/tool"
+    inputs { ["nixpkgs"] = new Nix.Input { follows = "nixpkgs" } }
+  }
+  ["source"] = new Nix.Input {
+    url = "path:../source"
+    flake = false
+    extra { ["name"] = "source" }
+  }
+}
+
+packages { ["x86_64-linux"] { ["default"] = new Nix.Raw { code = "inputs.nixpkgs.legacyPackages.x86_64-linux.hello" } } }
+devShells { ["x86_64-linux"] { ["default"] = new Nix.Raw { code = "inputs.nixpkgs.legacyPackages.x86_64-linux.mkShell { }" } } }
+checks { ["x86_64-linux"] { ["hello"] = new Nix.Ref { path = "self.packages.x86_64-linux.default" } } }
+apps { ["x86_64-linux"] { ["default"] = new Nix.App { program = "/bin/hello" } } }
+formatter { ["x86_64-linux"] = new Nix.Ref { path = "inputs.nixpkgs.legacyPackages.x86_64-linux.nixfmt" } }
+overlays { ["default"] = new Nix.Raw { code = "final: prev: { }" } }
+nixosModules { ["default"] = new Nix.Raw { code = "{ ... }: { }" } }
+nixosConfigurations { ["host"] = new Nix.Ref { path = "inputs.nixpkgs.lib.nixosSystem { modules = [ ]; }" } }
+legacyPackages { ["x86_64-linux"] = new Nix.Ref { path = "inputs.nixpkgs.legacyPackages.x86_64-linux" } }
+templates { ["default"] = new Nix.Template { path = new Nix.Path { value = "../template" }; description = "Template" } }
+bundlers { ["default"] = new Nix.Raw { code = "drv: drv" } }
+hydraJobs { ["hello"] = new Nix.Ref { path = "self.packages.x86_64-linux.default" } }
+
+defaultPackage { ["x86_64-linux"] = new Nix.Ref { path = "self.packages.x86_64-linux.default" } }
+defaultApp { ["x86_64-linux"] = new Nix.Ref { path = "self.apps.x86_64-linux.default" } }
+devShell { ["x86_64-linux"] = new Nix.Ref { path = "self.devShells.x86_64-linux.default" } }
+defaultBundler { ["x86_64-linux"] = new Nix.Ref { path = "self.bundlers.default" } }
+overlay = new Nix.Ref { path = "self.overlays.default" }
+nixosModule = new Nix.Ref { path = "self.nixosModules.default" }
+defaultTemplate = new Nix.Ref { path = "self.templates.default" }
+
+custom {
+  ["lib"] = new Nix.Attrs {
+    values {
+      ["message"] = "hello"
+      ["numbers"] = new Nix.ListExpr { values { 1; 2; 3 } }
+    }
+  }
+}

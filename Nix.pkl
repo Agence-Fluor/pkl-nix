@@ -1,0 +1,148 @@
+module nix.Nix
+
+/// A Nix expression. Raw is the escape hatch for syntax this library does not model.
+open class Expr {
+  code: String(!isEmpty)
+}
+
+typealias Value = Expr | String | Boolean | Int | Float | Null
+typealias OutputSet = Mapping<String, Expr>
+typealias OutputsBySystem = Mapping<String, OutputSet>
+
+class Raw extends Expr {}
+
+/// A reference such as inputs.nixpkgs.legacyPackages.${system}.hello.
+class Ref extends Expr {
+  path: String(!isEmpty)
+  code = path
+}
+
+/// A Nix path literal, relative to the generated .pkl-nix-tools/flake.nix.
+class Path extends Expr {
+  value: String(!isEmpty)
+  code = value
+}
+
+/// A structured Nix attribute set or list can contain literals and Expr values.
+class Attrs extends Expr {
+  values: Mapping<String, Value> = new {}
+  code = renderAttrs(values)
+}
+
+class ListExpr extends Expr {
+  values: Listing<Value> = new {}
+  code = "[ " + values.toList().map((value) -> render(value)).join(" ") + " ]"
+}
+
+/// A Nix flake app entry.
+class App extends Expr {
+  program: String|Expr
+  extra: Mapping<String, Value> = new {}
+  code = renderAttrs(new Mapping<String, Value> {
+    ["type"] = "app"
+    ["program"] = program
+    for (key, value in extra) { [key] = value }
+  })
+}
+
+/// A flake template. `path` is usually a Nix path literal or self + /path.
+class Template extends Expr {
+  path: Expr
+  description: String = ""
+  welcomeText: String? = null
+  extra: Mapping<String, Value> = new {}
+  code = renderAttrs(new Mapping<String, Value> {
+    ["path"] = path
+    ["description"] = description
+    when (welcomeText != null) { ["welcomeText"] = welcomeText }
+    for (key, value in extra) { [key] = value }
+  })
+}
+
+/// One flake input. Nested inputs model follows and input overrides.
+class Input {
+  url: String? = null
+  follows: String? = null
+  flake: Boolean? = null
+  inputs: Mapping<String, Input> = new {}
+  type: String? = null
+  owner: String? = null
+  repo: String? = null
+  id: String? = null
+  ref: String? = null
+  rev: String? = null
+  narHash: String? = null
+  dir: String? = null
+  path: String? = null
+  shallow: Boolean? = null
+  submodules: Boolean? = null
+  allRefs: Boolean? = null
+  lastModified: Int? = null
+  extra: Mapping<String, Value> = new {}
+}
+
+typealias Inputs = Mapping<String, Input>
+typealias Packages = OutputsBySystem
+typealias DevShells = OutputsBySystem
+typealias Apps = OutputsBySystem
+typealias Checks = OutputsBySystem
+typealias Formatters = Mapping<String, Expr>
+typealias Overlays = Mapping<String, Expr>
+typealias NixosModules = Mapping<String, Expr>
+typealias NixosConfigurations = Mapping<String, Expr>
+typealias Templates = Mapping<String, Expr>
+
+const function quote(value: String): String =
+  "\"" + value.chars.map((char) ->
+    if (char == "\\") "\\\\"
+    else if (char == "\"") "\\\""
+    else if (char == "\n") "\\n"
+    else if (char == "\r") "\\r"
+    else if (char == "\t") "\\t"
+    else char
+  ).join("").replaceAllMapped("${", (_) -> "\\${") + "\""
+
+const function render(value: Value): String =
+  if (value is Expr) value.code
+  else if (value is String) quote(value)
+  else if (value is Boolean || value is Int || value is Float) value.toString()
+  else if (value is Null) "null"
+  else throw("Unsupported Nix value: \(value)")
+
+const function renderAttrs(values: Mapping<String, Value>): String =
+  if (values.isEmpty) "{ }"
+  else "{\n" + values.keys.toList().sort().map((key) -> "  " + quote(key) + " = " + render(values[key]) + ";").join("\n") + "\n}"
+
+const function renderInput(input: Input): String =
+  renderAttrs(new Mapping<String, Value> {
+    when (input.url != null) { ["url"] = input.url }
+    when (input.follows != null) { ["follows"] = input.follows }
+    when (input.flake != null) { ["flake"] = input.flake }
+    when (!input.inputs.isEmpty) { ["inputs"] = new Raw { code = renderInputs(input.inputs) } }
+    when (input.type != null) { ["type"] = input.type }
+    when (input.owner != null) { ["owner"] = input.owner }
+    when (input.repo != null) { ["repo"] = input.repo }
+    when (input.id != null) { ["id"] = input.id }
+    when (input.ref != null) { ["ref"] = input.ref }
+    when (input.rev != null) { ["rev"] = input.rev }
+    when (input.narHash != null) { ["narHash"] = input.narHash }
+    when (input.dir != null) { ["dir"] = input.dir }
+    when (input.path != null) { ["path"] = input.path }
+    when (input.shallow != null) { ["shallow"] = input.shallow }
+    when (input.submodules != null) { ["submodules"] = input.submodules }
+    when (input.allRefs != null) { ["allRefs"] = input.allRefs }
+    when (input.lastModified != null) { ["lastModified"] = input.lastModified }
+    for (key, value in input.extra) { [key] = value }
+  })
+
+const function renderInputs(inputs: Mapping<String, Input>): String =
+  if (inputs.isEmpty) "{ }"
+  else "{\n" + inputs.keys.toList().sort().map((key) -> "  " + quote(key) + " = " + renderInput(inputs[key]) + ";").join("\n") + "\n}"
+
+const function renderSystems(systems: OutputsBySystem): String =
+  if (systems.isEmpty) "{ }"
+  else "{\n" + systems.keys.toList().sort().map((system) -> "  " + quote(system) + " = " + renderAttrs(systems[system]) + ";").join("\n") + "\n}"
+
+const function renderExprs(values: Mapping<String, Expr>): String =
+  if (values.isEmpty) "{ }"
+  else "{\n" + values.keys.toList().sort().map((key) -> "  " + quote(key) + " = " + render(values[key]) + ";").join("\n") + "\n}"

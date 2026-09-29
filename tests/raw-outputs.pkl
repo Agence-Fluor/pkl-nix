@@ -1,0 +1,7 @@
+amends "../Flake.pkl"
+
+import "../Nix.pkl" as Nix
+
+outputsExpr = new Nix.Raw {
+  code = "{ self, ... }: { answer = 42; }"
+}
