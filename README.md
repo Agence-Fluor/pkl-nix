@@ -19,7 +19,7 @@ dependencies {
 Puis créez `flake.pkl` :
 
 ```pkl
-#!/usr/bin/env -S pkl-nix-tools
+#!/usr/bin/env -S pkl eval
 amends "@nix/Flake.pkl"
 import "@nix/Nix.pkl" as Nix
 
@@ -39,8 +39,9 @@ packages {
 ```
 
 Exécutez `pkl project resolve` une fois pour créer le fichier standard
-`PklProject.deps.json`. [L'exemple exécutable](../pkl-nix-tools/example/README.md)
-montre aussi la dépendance locale, le rendu, le build et l'exécution.
+`PklProject.deps.json`. Après `chmod +x flake.pkl`, `./flake.pkl` produit le Nix
+sur la sortie standard. [L'exemple complet](https://github.com/Agence-Fluor/pkl-nix-tools/tree/master/example)
+montre le rendu, le build et l'exécution avec le wrapper `pkl-nix-tools`.
 
 Le schéma expose `description`, `inputs`, `nixConfig`, `packages`,
 `devShells`, `apps`, `checks`, `formatter`, `overlays`, `nixosModules`,
@@ -71,12 +72,18 @@ Pour voir le rendu directement :
 pkl eval example/flake.pkl
 sh scripts/test-package.sh
 sh scripts/package-pkl.sh
-./flake.pkl develop
+pkl-nix-tools develop
 ```
 
-`PklProject` contient la version du package, initialement `0.1.0`. La
+`PklProject` contient la version du package. La
 pipeline GitHub vérifie le schéma et le package, puis publie les quatre
 artefacts Pkl sur les tags `pkl-nix@<version>`, comme les autres packages du
 dépôt. `pkl-nix-tools` suit les modules et le lock Pkl dans son fingerprint.
-Pour exécuter le shebang local, ajoutez le répertoire de `pkl-nix-tools`
-à votre `PATH`.
+Le shebang utilise Pkl directement ; le wrapper est nécessaire aux commandes Nix.
+Pour publier, commitez la version puis utilisez le tag calculé depuis `PklProject` :
+
+```sh
+tag=$(sh scripts/release-tag.sh)
+git tag "$tag"
+git push github "$tag"
+```

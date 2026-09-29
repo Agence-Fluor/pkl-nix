@@ -1,0 +1,11 @@
+import "../Nix.pkl" as Nix
+
+output {
+  text = Nix.render(new Nix.ListExpr {
+    values {
+      new Nix.Raw { code = "builtins.add 1 2" }
+      new Nix.Raw { code = "if true then 7 else 0" }
+      new Nix.ListExpr { values { "${literal}"; -2 } }
+    }
+  })
+}

@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
+export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:+$JAVA_TOOL_OPTIONS }-XX:-UsePerfData"
 
-repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
+repo=$(CDPATH='' cd "$(dirname "$0")/.." && pwd)
 temp=$(mktemp -d)
 trap 'rm -rf "$temp"' EXIT HUP INT TERM
 
@@ -9,10 +10,16 @@ pkl eval "$repo/tests/all-outputs.pkl" > "$temp/first.nix"
 pkl eval "$repo/tests/all-outputs.pkl" > "$temp/second.nix"
 cmp "$temp/first.nix" "$temp/second.nix"
 nix-instantiate --parse "$temp/first.nix" > /dev/null
+# Literal Nix interpolation must remain escaped.
+# shellcheck disable=SC2016
 grep -Fq 'Escaped \${literal}' "$temp/first.nix"
 pkl eval "$repo/tests/raw-outputs.pkl" > "$temp/raw.nix"
 nix-instantiate --parse "$temp/raw.nix" > /dev/null
 grep -Fq 'answer = 42' "$temp/raw.nix"
+pkl eval "$repo/tests/list-expressions.pkl" > "$temp/list.nix"
+# Literal Nix interpolation must survive evaluation.
+# shellcheck disable=SC2016
+test "$(nix-instantiate --eval --strict --json "$temp/list.nix")" = '[3,7,["${literal}",-2]]'
 pkl eval "$repo/flake.pkl" > "$temp/self.nix"
 nix-instantiate --parse "$temp/self.nix" > /dev/null
 

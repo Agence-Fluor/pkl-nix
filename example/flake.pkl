@@ -1,3 +1,4 @@
+#!/usr/bin/env -S pkl eval
 amends "../Flake.pkl"
 
 import "../Nix.pkl" as Nix

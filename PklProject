@@ -3,7 +3,7 @@ amends "pkl:Project"
 package {
   name = "pkl-nix"
   baseUri = "package://pkg.pkl-lang.org/github.com/Agence-Fluor/pkl-nix/pkl-nix"
-  version = "0.1.0"
+  version = "0.1.1"
   packageZipUrl = "https://github.com/Agence-Fluor/pkl-nix/releases/download/pkl-nix@\(version)/pkl-nix@\(version).zip"
   sourceCode = "https://github.com/Agence-Fluor/pkl-nix"
 }

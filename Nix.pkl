@@ -31,7 +31,8 @@ class Attrs extends Expr {
 
 class ListExpr extends Expr {
   values: Listing<Value> = new {}
-  code = "[ " + values.toList().map((value) -> render(value)).join(" ") + " ]"
+  // Applications, operators and negative numbers need parentheses in Nix lists.
+  code = "[ " + values.toList().map((value) -> "(" + render(value) + ")").join(" ") + " ]"
 }
 
 /// A Nix flake app entry.

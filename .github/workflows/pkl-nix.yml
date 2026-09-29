@@ -19,6 +19,11 @@ jobs:
         with:
           pkl-version: 0.31.1
       - uses: cachix/install-nix-action@v31
+      - name: Verify release tag
+        if: github.ref_type == 'tag'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: sh scripts/release-tag.sh "$TAG"
       - name: Check schemas, Nix rendering and package import
         run: sh scripts/test-package.sh
       - name: Build the publishable Pkl package
@@ -49,8 +54,7 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          version=$(pkl eval --no-project -x 'package.version' PklProject)
-          test "$TAG" = "pkl-nix@$version"
+          sh scripts/release-tag.sh "$TAG"
       - name: Publish Pkl package assets
         env:
           GH_TOKEN: ${{ github.token }}
