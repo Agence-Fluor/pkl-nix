@@ -11,7 +11,7 @@ Dans un projet Pkl, déclarez le paquet publié :
 amends "pkl:Project"
 dependencies {
   ["nix"] {
-    uri = "package://pkg.pkl-lang.org/github.com/Agence-Fluor/pkl-nix/pkl-nix@0.1.0"
+    uri = "package://pkg.pkl-lang.org/github.com/Agence-Fluor/pkl-nix/pkl-nix@0.1.1"
   }
 }
 ```
