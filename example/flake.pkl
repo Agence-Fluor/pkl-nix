@@ -20,7 +20,12 @@ packages {
 apps {
   ["x86_64-linux"] {
     ["hello"] = new Nix.App {
-      program = new Nix.Raw { code = "\"${inputs.nixpkgs.legacyPackages.x86_64-linux.hello}/bin/hello\"" }
+      program = new Nix.InterpolatedString {
+        parts {
+          new Nix.Ref { path = "inputs.nixpkgs.legacyPackages.x86_64-linux.hello" }
+          "/bin/hello"
+        }
+      }
     }
   }
 }

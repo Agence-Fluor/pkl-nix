@@ -20,6 +20,8 @@ pkl eval "$repo/tests/list-expressions.pkl" > "$temp/list.nix"
 # Literal Nix interpolation must survive evaluation.
 # shellcheck disable=SC2016
 test "$(nix-instantiate --eval --strict --json "$temp/list.nix")" = '[3,7,["${literal}",-2]]'
+pkl eval "$repo/tests/typed-expressions.pkl" > "$temp/typed.nix"
+test "$(nix-instantiate --eval --strict --json "$temp/typed.nix")" = '{"packages":["pkl","incus-client"],"shellHook":"export PKL=\"pkl\""}'
 pkl eval "$repo/flake.pkl" > "$temp/self.nix"
 nix-instantiate --parse "$temp/self.nix" > /dev/null
 

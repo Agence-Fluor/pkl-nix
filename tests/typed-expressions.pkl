@@ -1,0 +1,18 @@
+import "../Nix.pkl" as Nix
+
+output {
+  text =
+    Nix.render(new Nix.MkShell {
+      pkgs = new Nix.Attrs {
+        values {
+          ["mkShell"] = new Nix.Lambda { parameter = "args"; body = new Nix.Ref { path = "args" } }
+          ["pkl"] = "pkl"
+          ["incus"] = new Nix.Attrs { values { ["client"] = "incus-client" } }
+        }
+      }
+      packages { "pkl"; "incus.client" }
+      shellHook = new Nix.InterpolatedString {
+        parts { "export PKL=\""; new Nix.Ref { path = "pkgs.pkl" }; "\"" }
+      }
+    })
+}

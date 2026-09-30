@@ -35,15 +35,84 @@ class ListExpr extends Expr {
   code = "[ " + values.toList().map((value) -> "(" + render(value) + ")").join(" ") + " ]"
 }
 
+/// Apply a Nix function to ordered arguments.
+class Apply extends Expr {
+  callee: Expr
+  arguments: Listing<Value> = new {}
+  code =
+    "("
+      + render(callee)
+      + ")"
+      + arguments.toList().map((argument) -> " (" + render(argument) + ")").join("")
+}
+
+/// A Nix function, for example `args: args` or `{ ... }: { }`.
+class Lambda extends Expr {
+  parameter: String(!isEmpty)
+  body: Value
+  code = parameter + ": " + render(body)
+}
+
+/// A Nix string with literal fragments and interpolated expressions.
+class InterpolatedString extends Expr {
+  parts: Listing<String | Expr> = new {}
+  code =
+    "\""
+      + parts
+        .toList()
+        .map((part) ->
+          if (part is String)
+            escapeString(part)
+          else
+            "$" + "{" + render(part) + "}"
+        )
+        .join("")
+      + "\""
+}
+
+/// A package set's `withPackages` function, commonly used by Python.
+class WithPackages extends Expr {
+  target: Expr
+  packages: Listing<String> = new {}
+  code =
+    "("
+      + render(target)
+      + ").withPackages (packages: [ "
+      + packages.toList().map((name) -> "packages." + name).join(" ")
+      + " ])"
+}
+
+/// A nixpkgs development shell. Package names are selected from `pkgs`.
+class MkShell extends Expr {
+  pkgs: Expr
+  packages: Listing<String | Expr> = new {}
+  shellHook: String | Expr? = null
+  extra: Mapping<String, Value> = new {}
+  local resolvedPackages =
+    packages
+      .toList()
+      .map((package) -> if (package is String) new Ref { path = "pkgs." + package } else package)
+  code =
+    "let pkgs = "
+      + render(pkgs)
+      + "; in pkgs.mkShell "
+      + renderAttrs(new Mapping<String, Value> {
+        ["packages"] = new ListExpr { values { for (package in resolvedPackages) { package } } }
+        when (shellHook != null) { ["shellHook"] = shellHook }
+        for (key, value in extra) { [key] = value }
+      })
+}
+
 /// A Nix flake app entry.
 class App extends Expr {
-  program: String|Expr
+  program: String | Expr
   extra: Mapping<String, Value> = new {}
-  code = renderAttrs(new Mapping<String, Value> {
-    ["type"] = "app"
-    ["program"] = program
-    for (key, value in extra) { [key] = value }
-  })
+  code =
+    renderAttrs(new Mapping<String, Value> {
+      ["type"] = "app"
+      ["program"] = program
+      for (key, value in extra) { [key] = value }
+    })
 }
 
 /// A flake template. `path` is usually a Nix path literal or self + /path.
@@ -52,12 +121,13 @@ class Template extends Expr {
   description: String = ""
   welcomeText: String? = null
   extra: Mapping<String, Value> = new {}
-  code = renderAttrs(new Mapping<String, Value> {
-    ["path"] = path
-    ["description"] = description
-    when (welcomeText != null) { ["welcomeText"] = welcomeText }
-    for (key, value in extra) { [key] = value }
-  })
+  code =
+    renderAttrs(new Mapping<String, Value> {
+      ["path"] = path
+      ["description"] = description
+      when (welcomeText != null) { ["welcomeText"] = welcomeText }
+      for (key, value in extra) { [key] = value }
+    })
 }
 
 /// One flake input. Nested inputs model follows and input overrides.
@@ -93,26 +163,50 @@ typealias NixosModules = Mapping<String, Expr>
 typealias NixosConfigurations = Mapping<String, Expr>
 typealias Templates = Mapping<String, Expr>
 
-const function quote(value: String): String =
-  "\"" + value.chars.map((char) ->
-    if (char == "\\") "\\\\"
-    else if (char == "\"") "\\\""
-    else if (char == "\n") "\\n"
-    else if (char == "\r") "\\r"
-    else if (char == "\t") "\\t"
-    else char
-  ).join("").replaceAllMapped("${", (_) -> "\\${") + "\""
+const function escapeString(value: String): String =
+  value.chars
+    .map((char) ->
+      if (char == "\\")
+        "\\\\"
+      else if (char == "\"")
+        "\\\""
+      else if (char == "\n")
+        "\\n"
+      else if (char == "\r")
+        "\\r"
+      else if (char == "\t")
+        "\\t"
+      else
+        char
+    )
+    .join("")
+    .replaceAllMapped("${", (_) -> "\\${")
+
+const function quote(value: String): String = "\"" + escapeString(value) + "\""
 
 const function render(value: Value): String =
-  if (value is Expr) value.code
-  else if (value is String) quote(value)
-  else if (value is Boolean || value is Int || value is Float) value.toString()
-  else if (value is Null) "null"
-  else throw("Unsupported Nix value: \(value)")
+  if (value is Expr)
+    value.code
+  else if (value is String)
+    quote(value)
+  else if (value is Boolean || value is Int || value is Float)
+    value.toString()
+  else if (value is Null)
+    "null"
+  else
+    throw("Unsupported Nix value: \(value)")
 
 const function renderAttrs(values: Mapping<String, Value>): String =
-  if (values.isEmpty) "{ }"
-  else "{\n" + values.keys.toList().sort().map((key) -> "  " + quote(key) + " = " + render(values[key]) + ";").join("\n") + "\n}"
+  if (values.isEmpty)
+    "{ }"
+  else
+    "{\n"
+      + values.keys
+        .toList()
+        .sort()
+        .map((key) -> "  " + quote(key) + " = " + render(values[key]) + ";")
+        .join("\n")
+      + "\n}"
 
 const function renderInput(input: Input): String =
   renderAttrs(new Mapping<String, Value> {
@@ -137,13 +231,37 @@ const function renderInput(input: Input): String =
   })
 
 const function renderInputs(inputs: Mapping<String, Input>): String =
-  if (inputs.isEmpty) "{ }"
-  else "{\n" + inputs.keys.toList().sort().map((key) -> "  " + quote(key) + " = " + renderInput(inputs[key]) + ";").join("\n") + "\n}"
+  if (inputs.isEmpty)
+    "{ }"
+  else
+    "{\n"
+      + inputs.keys
+        .toList()
+        .sort()
+        .map((key) -> "  " + quote(key) + " = " + renderInput(inputs[key]) + ";")
+        .join("\n")
+      + "\n}"
 
 const function renderSystems(systems: OutputsBySystem): String =
-  if (systems.isEmpty) "{ }"
-  else "{\n" + systems.keys.toList().sort().map((system) -> "  " + quote(system) + " = " + renderAttrs(systems[system]) + ";").join("\n") + "\n}"
+  if (systems.isEmpty)
+    "{ }"
+  else
+    "{\n"
+      + systems.keys
+        .toList()
+        .sort()
+        .map((system) -> "  " + quote(system) + " = " + renderAttrs(systems[system]) + ";")
+        .join("\n")
+      + "\n}"
 
 const function renderExprs(values: Mapping<String, Expr>): String =
-  if (values.isEmpty) "{ }"
-  else "{\n" + values.keys.toList().sort().map((key) -> "  " + quote(key) + " = " + render(values[key]) + ";").join("\n") + "\n}"
+  if (values.isEmpty)
+    "{ }"
+  else
+    "{\n"
+      + values.keys
+        .toList()
+        .sort()
+        .map((key) -> "  " + quote(key) + " = " + render(values[key]) + ";")
+        .join("\n")
+      + "\n}"

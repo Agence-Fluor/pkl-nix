@@ -11,7 +11,7 @@ Dans un projet Pkl, déclarez le paquet publié :
 amends "pkl:Project"
 dependencies {
   ["nix"] {
-    uri = "package://pkg.pkl-lang.org/github.com/Agence-Fluor/pkl-nix/pkl-nix@0.1.1"
+    uri = "package://pkg.pkl-lang.org/github.com/Agence-Fluor/pkl-nix/pkl-nix@0.1.2"
   }
 }
 ```
@@ -58,6 +58,12 @@ principaux attributs des fetchers (`type`, `owner`, `repo`, `ref`, `rev`,
 fetcher. `Nix.App` et `Nix.Template` décrivent les sorties correspondantes.
 `Nix.Attrs`, `Nix.ListExpr` et `Nix.Path` représentent les structures et
 chemins Nix. `custom` accepte toute autre sortie, par exemple `lib`.
+
+`Nix.MkShell` décrit `mkShell` avec un ensemble `pkgs`, une liste de noms de
+paquets ou d'expressions, et éventuellement `shellHook`. `Nix.WithPackages`
+décrit les environnements comme `python3.withPackages`. `Nix.Apply`,
+`Nix.Lambda` et `Nix.InterpolatedString` couvrent l'application de fonctions,
+les fonctions Nix et l'interpolation sans écrire de code Nix dans une chaîne.
 
 `Nix.Ref { path = "inputs.nixpkgs..." }` insère une référence Nix.
 `Nix.Raw { code = "..." }` insère exactement le code fourni, y compris les
