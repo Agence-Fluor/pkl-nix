@@ -10,7 +10,7 @@ Dans un projet Pkl, déclarez le paquet publié :
 ```pkl
 amends "pkl:Project"
 dependencies {
-  ["nixTools"] { uri = "package://pkg.pkl-lang.org/github.com/Agence-Fluor/pkl-nix-tools/pkl-nix-tools@0.1.6" }
+  ["nixTools"] { uri = "package://pkg.pkl-lang.org/github.com/Agence-Fluor/pkl-nix-tools/pkl-nix-tools@0.2.0" }
   ["nix"] {
     uri = "package://pkg.pkl-lang.org/github.com/Agence-Fluor/pkl-nix/pkl-nix@0.1.2"
   }
@@ -20,7 +20,7 @@ dependencies {
 Puis créez `flake.pkl` :
 
 ```pkl
-#!/usr/bin/env -S bash -ec 'd=${0%/*};r=$d/.pkl-nix-tools;test ! -L "$r";test -f "$r/run"||{ mkdir -p "$r";echo "*" >"$r/.gitignore";pkl eval -w "$d" -x launcher flake.pkl -o ".pkl-nix-tools/run.$$";mv "$r/run.$$" "$r/run";};exec bash "$r/run" "$0" "$@"'
+#!/usr/bin/env -S bash -ec 's=$(pkl eval -w "${0%/*}" -x launcher flake.pkl);eval "$s"'
 amends "@nix/Flake.pkl"
 import "@nix/Nix.pkl" as Nix
 local launcher = import("@nixTools/Bootstrap.pkl").output.text
