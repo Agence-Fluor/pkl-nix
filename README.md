@@ -2,10 +2,13 @@
 
 `pkl-nix` est une bibliothèque Pkl versionnée : `Flake.pkl` décrit le flake et
 `Nix.pkl` représente les valeurs Nix. Le renderer de `Flake.pkl` produit du
-texte Nix déterministe, avec des clés triées. Il n'évalue rien et ne possède
-ni store, ni daemon, ni lockfile.
+texte Nix déterministe, avec des clés triées. Nix assure ensuite l'évaluation,
+les builds, le store et le verrouillage des inputs.
 
-Dans un projet Pkl, déclarez le paquet publié :
+## Démarrer
+
+Pour utiliser `./flake.pkl`, installez Bash 4+, Pkl 0.31.1+ et Nix avec
+Flakes, puis déclarez les deux paquets publiés dans `PklProject` :
 
 ```pkl
 amends "pkl:Project"
@@ -40,18 +43,31 @@ packages {
 }
 ```
 
-Exécutez `pkl project resolve` une fois pour créer le fichier standard
-`PklProject.deps.json`. `pkl eval flake.pkl` produit le Nix sur la sortie standard.
-Avec [le bootstrap pkl-nix-tools](https://github.com/Agence-Fluor/pkl-nix-tools#démarrer)
-et après `chmod +x flake.pkl`, `./flake.pkl build .#hello` lance Nix.
+```sh
+pkl project resolve
+chmod +x flake.pkl
+./flake.pkl build .#hello
+pkl eval flake.pkl                    # afficher le Nix uniquement
+```
+
+Commitez `PklProject.deps.json` ; relancez `pkl project resolve` après avoir
+modifié les dépendances. Le shebang charge le lanceur depuis le paquet
+[`pkl-nix-tools`](https://github.com/Agence-Fluor/pkl-nix-tools#démarrer), sans
+installation globale ni script extrait dans le projet. Pkl démarre à chaque
+appel ; le rendu Nix reste en cache dans `.pkl-nix-tools/`.
+
+La bibliothèque s'utilise aussi avec `pkl eval` : la dépendance `nix`,
+`amends "@nix/Flake.pkl"` et les imports de types suffisent pour le rendu.
 [L'exemple complet](https://github.com/Agence-Fluor/pkl-nix-tools/tree/master/example)
 montre le build, l'exécution et le shell de développement.
+
+## Schémas et expressions
 
 Le schéma expose `description`, `inputs`, `nixConfig`, `packages`,
 `devShells`, `apps`, `checks`, `formatter`, `overlays`, `nixosModules`,
 `nixosConfigurations`, `legacyPackages`, `templates`, `bundlers`,
-`hydraJobs` et `custom`. Les quatre premières sorties utilisent des clés
-`système → nom → expression` ; `formatter` utilise `système → expression`.
+`hydraJobs` et `custom`. `packages`, `devShells`, `apps` et `checks` utilisent
+des clés `système → nom → expression` ; `formatter` utilise `système → expression`.
 Les noms historiques (`defaultPackage`, `defaultApp`, `devShell`,
 `defaultBundler`, `overlay`, `nixosModule`, `defaultTemplate`) restent
 disponibles, même si Nix les déconseille.
@@ -79,13 +95,14 @@ fonctions, dérivations et constructions Nix que le schéma ne modélise pas.
 structurés ne conviennent pas. Les chaînes Pkl ordinaires sont échappées
 comme chaînes Nix, y compris `${`.
 
-Pour voir le rendu directement :
+## Développer et publier
 
 ```sh
+pkl project resolve
+./flake.pkl develop
 pkl eval example/flake.pkl
 sh scripts/test-package.sh
 sh scripts/package-pkl.sh
-./flake.pkl develop
 ```
 
 `PklProject` contient la version du package. La
