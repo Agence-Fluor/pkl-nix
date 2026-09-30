@@ -19,6 +19,10 @@ jobs:
         with:
           pkl-version: 0.31.1
       - uses: cachix/install-nix-action@v31
+      - name: Resolve development dependencies
+        run: |
+          pkl project resolve
+          git diff --exit-code -- PklProject.deps.json
       - name: Verify release tag
         if: github.ref_type == 'tag'
         env:

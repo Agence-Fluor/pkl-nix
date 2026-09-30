@@ -8,3 +8,9 @@ package {
     "https://github.com/Agence-Fluor/pkl-nix/releases/download/pkl-nix@\(version)/pkl-nix@\(version).zip"
   sourceCode = "https://github.com/Agence-Fluor/pkl-nix"
 }
+
+dependencies {
+  ["nixTools"] {
+    uri = "package://pkg.pkl-lang.org/github.com/Agence-Fluor/pkl-nix-tools/pkl-nix-tools@0.1.6"
+  }
+}
