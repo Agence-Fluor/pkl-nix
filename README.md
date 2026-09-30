@@ -19,7 +19,7 @@ dependencies {
 Puis créez `flake.pkl` :
 
 ```pkl
-#!/usr/bin/env -S pkl eval
+#!/usr/bin/env pkl-nix-tools
 amends "@nix/Flake.pkl"
 import "@nix/Nix.pkl" as Nix
 
@@ -39,9 +39,11 @@ packages {
 ```
 
 Exécutez `pkl project resolve` une fois pour créer le fichier standard
-`PklProject.deps.json`. Après `chmod +x flake.pkl`, `./flake.pkl` produit le Nix
-sur la sortie standard. [L'exemple complet](https://github.com/Agence-Fluor/pkl-nix-tools/tree/master/example)
-montre le rendu, le build et l'exécution avec le wrapper `pkl-nix-tools`.
+`PklProject.deps.json`. `pkl eval flake.pkl` produit le Nix sur la sortie standard.
+Avec [pkl-nix-tools installé](https://github.com/Agence-Fluor/pkl-nix-tools#installer-depuis-pkl)
+et après `chmod +x flake.pkl`, `./flake.pkl build .#hello` lance Nix.
+[L'exemple complet](https://github.com/Agence-Fluor/pkl-nix-tools/tree/master/example)
+montre le build, l'exécution et le shell de développement.
 
 Le schéma expose `description`, `inputs`, `nixConfig`, `packages`,
 `devShells`, `apps`, `checks`, `formatter`, `overlays`, `nixosModules`,
@@ -56,6 +58,9 @@ disponibles, même si Nix les déconseille.
 principaux attributs des fetchers (`type`, `owner`, `repo`, `ref`, `rev`,
 `narHash`, `dir`, `path`, etc.). `extra` accepte les attributs propres à un
 fetcher. `Nix.App` et `Nix.Template` décrivent les sorties correspondantes.
+Comme dans Nix, utilisez soit une URL complète (avec `?dir=…` si nécessaire),
+soit la forme structurée avec `type` et les attributs du fetcher. Ajouter
+`dir` à côté d'une URL abrégée sans `type` n'est pas accepté par Nix.
 `Nix.Attrs`, `Nix.ListExpr` et `Nix.Path` représentent les structures et
 chemins Nix. `custom` accepte toute autre sortie, par exemple `lib`.
 
@@ -78,14 +83,14 @@ Pour voir le rendu directement :
 pkl eval example/flake.pkl
 sh scripts/test-package.sh
 sh scripts/package-pkl.sh
-pkl-nix-tools develop
+./flake.pkl develop
 ```
 
 `PklProject` contient la version du package. La
 pipeline GitHub vérifie le schéma et le package, puis publie les quatre
 artefacts Pkl sur les tags `pkl-nix@<version>`, comme les autres packages du
 dépôt. `pkl-nix-tools` suit les modules et le lock Pkl dans son fingerprint.
-Le shebang utilise Pkl directement ; le wrapper est nécessaire aux commandes Nix.
+Le shebang lance le wrapper ; la bibliothèque reste utilisable seule avec `pkl eval`.
 Pour publier, commitez la version puis utilisez le tag calculé depuis `PklProject` :
 
 ```sh
